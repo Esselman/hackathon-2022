@@ -16,65 +16,54 @@ const app = new App({
   console.log("⚡️ Bolt app is running in app.js!");
 })();
 
-app.command("/statuslist", async ({ ack, payload, context }) => {
+app.command("/testreminder", async ({ ack, payload, context }) => {
   ack();
 
-  await listReminders(payload, context);
+  console.log(payload);
+
+  //example of what a reminder could look like
+  //if channelId exists, then the reminder was created for the channel and will be posted in the channel rather than a DM
+  await remindUser({
+    id: 1,
+    text: "Reminder",
+    date: "08/28/2022",
+    /*
+      User/Channel Ids
+      Logan: U03V1P4617W
+      Chris: U03V1N69NGL
+      #bot_testing: C03UUS3U9P0
+    */
+    creatorId: "U03V1P4617W",
+    channelId: undefined,
+    beingNotifiedId: "U03V1P4617W",
+  });
 });
 
-//maybe use default slack reminder behavior
-app.event("app_mention", async ({ event, context, client, say }) => {
+async function remindUser(reminder) {
   try {
-    //TODO create a reminder
-    //TODO store the reminder
-  } catch (error) {
-    console.error(error);
-  }
-});
-
-app.action("reminder_fire", async ({ ack, body, context }) => {
-  ack();
-
-  await listReminders(body, context);
-});
-
-async function listReminders(body, context) {
-  //console.log(body);
-  try {
-    //TODO get reminders
-    const reminders = [
-      {
-        text: "Reminder 1",
-      },
-      {
-        text: "Reminder 2",
-      },
-    ];
-
-    //TODO nicer formatting
-    const reminder_blocks = reminders.map((reminder) => ({
-      type: "section",
-      text: {
-        type: "mrkdwn",
-        text: reminder.text,
-      },
-    }));
-
+    let channel = reminder.channelId ?? reminder.creatorId;
+    const ping =
+      reminder.channelId === channel ? "@here" : `<@${reminder.creatorId}>`;
     await app.client.chat.postMessage({
-      token: context.botToken,
-      channel: body.channel_id,
+      token: app.token,
+      channel: channel,
       blocks: [
         {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `Hi, <@${body.user_id}>! Here are your reminders:`,
+            text: `Hi, ${ping}! Here is your reminder:`,
           },
         },
-        ...reminder_blocks,
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `${reminder.text}`,
+          },
+        },
         {
           type: "actions",
-          //TODO actions for buttons
           elements: [
             {
               type: "button",
@@ -83,7 +72,11 @@ async function listReminders(body, context) {
                 text: "Done",
               },
               style: "primary",
-              value: "status_done",
+              value: `${JSON.stringify({
+                reminder: reminder,
+                status: "Done",
+              })}`,
+              action_id: "statusDone",
             },
             {
               type: "button",
@@ -91,7 +84,11 @@ async function listReminders(body, context) {
                 type: "plain_text",
                 text: "In progress",
               },
-              value: "status_in_progress",
+              value: `${JSON.stringify({
+                reminder: reminder,
+                status: "In progress",
+              })}`,
+              action_id: "statusInProgress",
             },
           ],
         },
@@ -101,3 +98,133 @@ async function listReminders(body, context) {
     console.error(error);
   }
 }
+
+app.action("statusDone", async ({ ack, body, context }) => {
+  ack();
+
+  // console.log(body);
+  const parsedValue = JSON.parse(body.actions[0].value);
+  const reminder = parsedValue.reminder;
+  const status = parsedValue.status;
+  await notifyUser(reminder.beingNotifiedId, reminder, status);
+});
+
+app.action("statusInProgress", async ({ ack, body, context }) => {
+  ack();
+
+  // console.log(body);
+  const parsedValue = JSON.parse(body.actions[0].value);
+  const reminder = parsedValue.reminder;
+  const status = parsedValue.status;
+  await notifyUser(reminder.beingNotifiedId, reminder, status);
+});
+
+async function notifyUser(userId, reminder, status) {
+  let reminderContext = `Reminder created by <@${reminder.creatorId}>`;
+  if (reminder.channelId) {
+    reminderContext += ` in <#${reminder.channelId}>`;
+  }
+
+  try {
+    await app.client.chat.postMessage({
+      token: app.token,
+      channel: userId,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `Hi, <@${userId}>! This is a notification that the following reminder is now *${status}*:`,
+          },
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `${reminder.text}`,
+          },
+        },
+        {
+          type: "context",
+          elements: [
+            {
+              type: "mrkdwn",
+              text: reminderContext,
+            },
+          ],
+        },
+      ],
+    });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+// app.command("/statuslist", async ({ ack, payload, context }) => {
+//   ack();
+
+//   await listReminders(payload, context);
+// });
+
+// async function listReminders(body, context) {
+//   try {
+//     //TODO get reminders
+//     const reminders = [
+//       {
+//         text: "Reminder 1",
+//       },
+//       {
+//         text: "Reminder 2",
+//       },
+//     ];
+
+//     //TODO nicer formatting
+//     const reminder_blocks = reminders.map((reminder) => ({
+//       type: "section",
+//       text: {
+//         type: "mrkdwn",
+//         text: reminder.text,
+//       },
+//     }));
+
+//     await app.client.chat.postMessage({
+//       token: app.token,
+//       channel: body.channel_id,
+//       blocks: [
+//         {
+//           type: "section",
+//           text: {
+//             type: "mrkdwn",
+//             text: `Hi, <@${body.user_id}>! Here are your reminders:`,
+//           },
+//         },
+//         ...reminder_blocks,
+//         {
+//           type: "actions",
+//           //TODO actions for buttons
+//           elements: [
+//             {
+//               type: "button",
+//               text: {
+//                 type: "plain_text",
+//                 text: "Done",
+//               },
+//               style: "primary",
+//               value: "status_done",
+//             },
+//             {
+//               type: "button",
+//               text: {
+//                 type: "plain_text",
+//                 text: "In progress",
+//               },
+//               value: "status_in_progress",
+//             },
+//           ],
+//         },
+//       ],
+//     });
+//   } catch (error) {
+//     console.error(error);
+//   }
+// }

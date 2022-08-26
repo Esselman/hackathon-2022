@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  status-list-sam
+  Sample SAM Template for status-list-sam
+  
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 10
+
+Resources:
+  newFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/lambda-functions/newFunction/dist
+      Handler: handler.main
+      Runtime: nodejs12.x
+      Environment:
+        Variables:
+          featureRoleArn: arn:aws:iam::917175471821:role/Status-List-FeatureRole-$USER

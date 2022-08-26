@@ -1,0 +1,17 @@
+{
+   "name": "status-link",
+   "version": "0.0.1",
+   "description": "Slackbot status reminders and updates",
+   "main": "app.js",
+   "scripts": {
+     "start": "node app.js"
+   },
+   "dependencies": {
+     "@slack/bolt": "^3.12.1"
+   },
+   "engines": {
+     "node": "14.x"
+   },
+   "license": "MIT"
+ }
+ 

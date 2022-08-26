@@ -1,0 +1,11 @@
+
+{
+    "app": "npx ts-node bin/status-list.ts",
+    "context": {
+      "appName": "Status-List",
+      "tags": {
+          "owner": "status-list@ncino.com",
+          "uai": "UAI1234"
+      }
+    }
+}

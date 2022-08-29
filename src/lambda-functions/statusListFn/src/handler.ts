@@ -51,6 +51,7 @@ app.command('/statusRespond', async ({ ack, payload, context }) => {
 
 // Handle the Lambda function event
 module.exports.handler = async (event, context, callback) => {
+  console.log(event);
   const handler = await awsLambdaReceiver.start();
   return handler(event, context, callback);
 };

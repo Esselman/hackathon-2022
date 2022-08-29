@@ -17,6 +17,7 @@
         "inlineSources": true,
         "experimentalDecorators": true,
         "strictPropertyInitialization": false,
+        "esModuleInterop": true,
         "types": ["node"],
         "typeRoots": ["./node_modules/@types"],
         "outDir": "dist/"

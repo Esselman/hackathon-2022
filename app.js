@@ -16,6 +16,141 @@ const app = new App({
   console.log("⚡️ Bolt app is running in app.js!");
 })();
 
+app.command("/status-create", async ({ ack, payload, context }) => {
+  ack();
+
+  // console.log(payload);
+
+  try {
+    const result = await app.client.views.open({
+      trigger_id: payload.trigger_id,
+      view: {
+        callback_id: 'status-create-view',
+        type: "modal",
+        title: {
+          type: "plain_text",
+          text: "My App",
+        },
+        close: {
+          type: "plain_text",
+          text: "Close",
+        },
+        submit: {
+          type: "plain_text",
+          text: "Submit",
+        },
+        blocks: [
+          {
+            block_id: "instructions",
+            type: "section",
+            text: {
+              type: "plain_text",
+              text: "Hello, please fill out the information below",
+              emoji: true,
+            },
+          },
+          {
+            block_id: "conversations_select",
+
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: "Select a user or channel:",
+            },
+            accessory: {
+              type: "conversations_select",
+              placeholder: {
+                type: "plain_text",
+                text: "Select a conversation",
+                emoji: true,
+              },
+              action_id: "conversations_select-action",
+            },
+          },
+          {
+            block_id: "datepicker",
+
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: "Pick a date:",
+            },
+            accessory: {
+              type: "datepicker",
+              placeholder: {
+                type: "plain_text",
+                text: "Select a date",
+                emoji: true,
+              },
+              action_id: "datepicker-action",
+            },
+          },
+          {
+            block_id: "timepicker",
+
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: "Select a time:",
+            },
+            accessory: {
+              type: "timepicker",
+              placeholder: {
+                type: "plain_text",
+                text: "Select time",
+                emoji: true,
+              },
+              action_id: "timepicker-action",
+            },
+          },
+          {
+            block_id: "plain_text_input",
+
+            type: "input",
+            element: {
+              type: "plain_text_input",
+              multiline: true,
+              action_id: "plain_text_input-action",
+            },
+            label: {
+              type: "plain_text",
+              text: "Enter your task here",
+              emoji: true,
+            },
+          },
+        ],
+      },
+    });
+  } catch (error) {
+    console.error(error);
+  }
+});
+
+//called on modal submission
+app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
+  await ack();
+
+  console.log(view);
+  console.log(view.state.values);
+  const conversation = view.state.values.conversations_select['conversations_select-action'].selected_conversation;
+  const date = view.state.values.datepicker['datepicker-action'].selected_date;
+  const time = view.state.values.timepicker['timepicker-action'].selected_time;
+  const message = view.state.values.plain_text_input['plain_text_input-action'].value;
+
+  //TODO store task
+  //TODO schedule reminder
+  
+});
+
+
+// app.action("conversations_select-action", async ({ ack, body, context }) => {
+//   ack();
+
+//   await (function () {
+//     // body.actions.selected_conversation
+//   })();
+// });
+
 app.command("/testreminder", async ({ ack, payload, context }) => {
   ack();
 
@@ -35,7 +170,7 @@ app.command("/testreminder", async ({ ack, payload, context }) => {
     */
     creatorId: "U03V1P4617W",
     channelId: undefined,
-    beingNotifiedId: "U03V1P4617W",
+    recipientId: "U03V1P4617W",
   });
 });
 
@@ -106,7 +241,7 @@ app.action("statusDone", async ({ ack, body, context }) => {
   const parsedValue = JSON.parse(body.actions[0].value);
   const reminder = parsedValue.reminder;
   const status = parsedValue.status;
-  await notifyUser(reminder.beingNotifiedId, reminder, status);
+  await notifyUser(reminder.recipientId, reminder, status);
 });
 
 app.action("statusInProgress", async ({ ack, body, context }) => {
@@ -116,7 +251,7 @@ app.action("statusInProgress", async ({ ack, body, context }) => {
   const parsedValue = JSON.parse(body.actions[0].value);
   const reminder = parsedValue.reminder;
   const status = parsedValue.status;
-  await notifyUser(reminder.beingNotifiedId, reminder, status);
+  await notifyUser(reminder.recipientId, reminder, status);
 });
 
 async function notifyUser(userId, reminder, status) {

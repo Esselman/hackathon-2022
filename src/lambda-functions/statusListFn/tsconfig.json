@@ -5,7 +5,7 @@
         "lib": ["es2020"],
         "declaration": false,
         "strict": true,
-        "noImplicitAny": true,
+        "noImplicitAny": false,
         "strictNullChecks": true,
         "noImplicitThis": true,
         "alwaysStrict": true,

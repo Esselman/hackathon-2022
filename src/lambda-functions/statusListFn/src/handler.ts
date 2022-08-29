@@ -1,21 +1,50 @@
-const { App } = require('@slack/bolt');
+import { App, AwsLambdaReceiver } from '@slack/bolt';
 
-export class Handler {
-  public async main(event: any, context: any): Promise<any> {
-    console.log(event);
-    const app = new App({
-      token: process.env.SLACK_BOT_TOKEN,
-      appToken: process.env.SLACK_APP_TOKEN,
-      signingSecret: process.env.SLACK_SIGNING_SECRET,
-      socketMode: true,
-      port: process.env.PORT || 3000
-    });
+// Initialize your custom receiver
+const awsLambdaReceiver = new AwsLambdaReceiver({
+  signingSecret: process.env.SLACK_SIGNING_SECRET ?? ''
+});
 
-    (async () => {
-      await app.start();
+const app = new App({
+  token: process.env.SLACK_BOT_TOKEN,
+  appToken: process.env.SLACK_APP_TOKEN,
+  receiver: awsLambdaReceiver,
+  socketMode: true
+});
 
-      console.log('⚡️ Bolt app is running in app.js!');
-    })();
-  }
+function ackAndLogPayload(ack, payload): void {
+  ack();
+  console.log(payload);
 }
-export const handler = new Handler();
+
+/**
+ * Create a new status reminder
+ * Externally used command
+ */
+app.command('/statusCreate', async ({ ack, payload, context }) => {
+  ackAndLogPayload(ack, payload);
+});
+
+/**
+ * List current statuses
+ * Externally used command
+ */
+app.command('/statusList', async ({ ack, payload, context }) => {
+  ackAndLogPayload(ack, payload);
+});
+
+/**
+ * Send a status reminder
+ * Internally used command
+ */
+app.command('/statusSend', async ({ ack, payload, context }) => {
+  ackAndLogPayload(ack, payload);
+});
+
+/**
+ * Send a response to a reminder to the reminder owner
+ * Internally used command
+ */
+app.command('/statusRespond', async ({ ack, payload, context }) => {
+  ackAndLogPayload(ack, payload);
+});

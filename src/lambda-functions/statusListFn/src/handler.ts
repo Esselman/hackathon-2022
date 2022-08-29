@@ -1,17 +1,50 @@
-import { ALambdaHandler } from '@ncino/aws-sdk';
+import { App, AwsLambdaReceiver } from '@slack/bolt';
 
-export class Handler extends ALambdaHandler {
-  public async main(event: any, context: any): Promise<any> {
-    try {
-      this.log(event);
-    } catch (error) {
-      this.throwHttpError(new Error(error as string), 500);
-    }
-    return event;
-  }
+// Initialize your custom receiver
+const awsLambdaReceiver = new AwsLambdaReceiver({
+  signingSecret: process.env.SLACK_SIGNING_SECRET ?? ''
+});
+
+const app = new App({
+  token: process.env.SLACK_BOT_TOKEN,
+  appToken: process.env.SLACK_APP_TOKEN,
+  receiver: awsLambdaReceiver,
+  socketMode: true
+});
+
+function ackAndLogPayload(ack, payload): void {
+  ack();
+  console.log(payload);
 }
 
-export const handler = new Handler();
-//Add your input parameters, if any
-handler.inputSchema = [];
-export const main = handler.execute.bind(handler);
+/**
+ * Create a new status reminder
+ * Externally used command
+ */
+app.command('/statusCreate', async ({ ack, payload, context }) => {
+  ackAndLogPayload(ack, payload);
+});
+
+/**
+ * List current statuses
+ * Externally used command
+ */
+app.command('/statusList', async ({ ack, payload, context }) => {
+  ackAndLogPayload(ack, payload);
+});
+
+/**
+ * Send a status reminder
+ * Internally used command
+ */
+app.command('/statusSend', async ({ ack, payload, context }) => {
+  ackAndLogPayload(ack, payload);
+});
+
+/**
+ * Send a response to a reminder to the reminder owner
+ * Internally used command
+ */
+app.command('/statusRespond', async ({ ack, payload, context }) => {
+  ackAndLogPayload(ack, payload);
+});

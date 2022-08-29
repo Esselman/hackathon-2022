@@ -11,7 +11,16 @@ export class LambdaStack extends StageableStack {
     this.feature = feature;
     this.devMode = this.getContext('devMode', false);
 
-    this.statusListFn = this.createFunction('StatusListFn', 'statusListFn', undefined, this.devMode ? 128 : 512);
+    this.statusListFn = this.createFunction(
+      'StatusListFn',
+      'statusListFn',
+      {
+        SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN ?? '',
+        SLACK_APP_TOKEN: process.env.SLACK_APP_TOKEN ?? '',
+        SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET ?? ''
+      },
+      this.devMode ? 128 : 512
+    );
   }
 
   private createFunction(

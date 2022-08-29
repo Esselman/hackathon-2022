@@ -9,6 +9,7 @@ import {
   ApiParameter
 } from '@ncino/aws-cdk';
 import { StackProps } from '@aws-cdk/core';
+import { WebSocketApi } from '@aws-cdk/aws-apigatewayv2';
 
 export interface ApiStackProps extends StackProps {
   readonly statusListFn: Function;
@@ -22,21 +23,14 @@ export class ApiStack extends Stack {
     this.feature = scope;
     const deploymentStage = this.getContext('deploymentStage') || ApiStageType.BLUE;
 
-    const gateway: ApiGateway = new ApiGateway(
-      this,
-      Utility.createResourceName(`status-list`),
-      {
-        name: Utility.createResourceName('status-list'),
-        description: 'The API for StatusList slack bot communication',
-        retainDeployments: true,
-        targetStageType: deploymentStage,
-        // stageVariables,
-        apiExecutionRole: this.feature.baseStack.apiExecutionRole
-      }
-    );
+    const gateway: WebSocketApi = new WebSocketApi(this, Utility.createResourceName(`status-list`), {
+      apiName: Utility.createResourceName('status-list'),
+      description: 'The API for StatusList slack bot communication',
+      routeSelectionExpression: '${request.body.action}'
+    });
     this.feature.registerResource('status-list', gateway);
-    this.createApi(gateway, props.statusListFn);
-    this.feature.addApiGatewayAccess('StatusListAPI', gateway.arnForExecuteApi());
+    // this.createApi(gateway, props.statusListFn);
+    // this.feature.addApiGatewayAccess('StatusListAPI', gateway.arnForExecuteApi());
   }
 
   private createApi(gateway: ApiGateway, newFunction: Function): void {

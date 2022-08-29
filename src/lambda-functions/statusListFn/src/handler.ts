@@ -1,17 +1,21 @@
-import { ALambdaHandler } from '@ncino/aws-sdk';
+const { App } = require('@slack/bolt');
 
-export class Handler extends ALambdaHandler {
+export class Handler {
   public async main(event: any, context: any): Promise<any> {
-    try {
-      this.log(event);
-    } catch (error) {
-      this.throwHttpError(new Error(error as string), 500);
-    }
-    return event;
+    console.log(event);
+    const app = new App({
+      token: process.env.SLACK_BOT_TOKEN,
+      appToken: process.env.SLACK_APP_TOKEN,
+      signingSecret: process.env.SLACK_SIGNING_SECRET,
+      socketMode: true,
+      port: process.env.PORT || 3000
+    });
+
+    (async () => {
+      await app.start();
+
+      console.log('⚡️ Bolt app is running in app.js!');
+    })();
   }
 }
-
 export const handler = new Handler();
-//Add your input parameters, if any
-handler.inputSchema = [];
-export const main = handler.execute.bind(handler);

@@ -8,8 +8,7 @@ const awsLambdaReceiver = new AwsLambdaReceiver({
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   appToken: process.env.SLACK_APP_TOKEN,
-  receiver: awsLambdaReceiver,
-  socketMode: true
+  receiver: awsLambdaReceiver
 });
 
 function ackAndLogPayload(ack, payload): void {
@@ -50,7 +49,8 @@ app.command('/statusRespond', async ({ ack, payload, context }) => {
 });
 
 // Handle the Lambda function event
-module.exports.handler = async (event, context, callback) => {
+module.exports.main = async (event, context, callback) => {
+  console.log(event);
   const handler = await awsLambdaReceiver.start();
   return handler(event, context, callback);
 };

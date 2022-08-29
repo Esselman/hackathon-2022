@@ -1,0 +1,30 @@
+{
+  "name": "newfunction",
+  "version": "1.0.0",
+  "description": "TODO: ENTER THE DESCRIPTION HERE",
+  "main": "index.js",
+  "scripts": {
+    "prebuild": "rm -rf dist/",
+    "build": "tsc",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "TODO: git+https://github.com/ncino/YOURREPOSITORY.git"
+  },
+  "keywords": [],
+  "author": "ENTER YOUR TEAM/PORTFOLIO NAME",
+  "license": "ISC",
+  "bugs": {
+    "url": "TODO: https://github.com/ncino/YOURREPOSITORY/issues"
+  },
+  "homepage": "TODO: https://github.com/ncino/YOURREPOSITORY#readme",
+  "devDependencies": {
+    "@types/node": "^14.0.1",
+    "ts-node": "^8.10.1",
+    "typescript": "^3.9.2"
+  },
+  "dependencies": {
+    "@ncino/aws-sdk": "latest"
+  }
+}

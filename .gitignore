@@ -1,1 +1,39 @@
 .env
+
+.DS_Store
+*.js
+!build/*.js
+!jest.config.js
+!jest.config.integration.js
+!jest.config.on-demand.js
+!.eslintrc.js
+!.prettierrc.js
+*.d.ts
+node_modules
+ci-cd-exports.json
+
+# Git
+!.git/hooks/pre-commit
+
+# App config
+exports.json
+status-list-api.swagger.json
+
+# CDK asset staging directory
+.cdk.staging
+cdk.out
+cdk.context.json
+
+# Parcel build directories
+.cache
+.build
+
+# Unit test
+reports
+coverage
+
+# Integration tests
+test/assets/Output/
+**.pwd
+!**/assets/*.pwd
+.history/*

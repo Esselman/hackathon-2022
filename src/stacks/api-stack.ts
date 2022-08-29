@@ -7,7 +7,8 @@ import {
   Utility,
   Function,
   ApiParameter,
-  ApiStageVariable
+  ApiStageVariable,
+  ParameterSource
 } from '@ncino/aws-cdk';
 import { StackProps } from '@aws-cdk/core';
 
@@ -61,10 +62,103 @@ export class ApiStack extends Stack {
   }
 
   private createApi(gateway: ApiGateway, newFunction: Function): void {
-    const resource = gateway.addResource(gateway.root, 'status-list');
-    gateway.enableCors(resource);
+    const slackResource = gateway.addResource(gateway.root, 'slack');
+    const eventsResource = gateway.addResource(slackResource, 'events');
+    gateway.enableCors(eventsResource);
 
-    const parameters: ApiParameter[] = [];
-    gateway.addMethod(ApiMethodType.POST, resource, 'StatusListFn', newFunction, parameters, 'StatusListFn');
+    const parameters: ApiParameter[] = [
+      {
+        name: 'token',
+        mappingName: 'token',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'team_id',
+        mappingName: 'team_id',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'team_domain',
+        mappingName: 'team_domain',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'channel_id',
+        mappingName: 'channel_id',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'channel_name',
+        mappingName: 'channel_name',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'user_id',
+        mappingName: 'user_id',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'user_name',
+        mappingName: 'user_name',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'command',
+        mappingName: 'command',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'text',
+        mappingName: 'text',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'team_id',
+        mappingName: 'team_id',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'api_app_id',
+        mappingName: 'api_app_id',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'is_enterprise_install',
+        mappingName: 'is_enterprise_install',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'response_url',
+        mappingName: 'response_url',
+        required: false,
+        source: ParameterSource.BODY
+      },
+      {
+        name: 'trigger_id',
+        mappingName: 'trigger_id',
+        required: false,
+        source: ParameterSource.BODY
+      }
+    ];
+    const method = gateway.addMethod(
+      ApiMethodType.POST,
+      eventsResource,
+      'StatusListFn',
+      newFunction,
+      parameters,
+      'StatusListFn'
+    );
   }
 }

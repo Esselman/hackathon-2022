@@ -5,18 +5,19 @@ import { AttributeType } from '@aws-cdk/aws-dynamodb';
 export class DataStack extends Stack {
   private feature: Feature;
   private removalPolicy: RemovalPolicy;
+  public statusTableName: string;
 
   constructor(scope: Feature, id: string, props?: StackProps) {
     super(scope, id, props);
     this.feature = scope;
     this.removalPolicy = Utility.isProductionEnvironment() ? RemovalPolicy.RETAIN : RemovalPolicy.DESTROY;
 
-    this.buildHistoryTable();
+    this.buildStatusTable();
   }
 
-  private buildHistoryTable(): DynamoDb {
+  private buildStatusTable(): DynamoDb {
     const tableName: string = this.getFullName('StatusLink');
-    const historyTable: DynamoDb = new DynamoDb(this, tableName, {
+    const statusTable: DynamoDb = new DynamoDb(this, tableName, {
       tableName,
       partitionKey: {
         name: 'statusId',
@@ -29,8 +30,8 @@ export class DataStack extends Stack {
       removalPolicy: this.removalPolicy
     });
 
-    this.feature.addServiceAccess(historyTable.tableArn, ['dynamodb:*']);
+    this.feature.addServiceAccess(statusTable.tableArn, ['dynamodb:*']);
 
-    return historyTable;
+    return statusTable;
   }
 }

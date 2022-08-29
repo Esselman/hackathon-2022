@@ -1,3 +1,4 @@
+import { RoleCredentials, STSManager } from '@ncino/aws-sdk';
 import { App, AwsLambdaReceiver } from '@slack/bolt';
 
 // Initialize your custom receiver
@@ -16,12 +17,19 @@ function ackAndLogPayload(ack, payload): void {
   console.log(payload);
 }
 
+async function getFeatureRoleCredentials(): Promise<RoleCredentials> {
+  const featureRoleArn: string = process.env.featureRoleArn ?? '';
+  return await STSManager.assumeRole(featureRoleArn);
+}
+
 /**
  * Create a new status reminder
  * Externally used command
  */
 app.command('/statusCreate', async ({ ack, payload, context }) => {
   ackAndLogPayload(ack, payload);
+  // Store in Dynamo
+  // postMessage with post_at
 });
 
 /**
@@ -30,14 +38,8 @@ app.command('/statusCreate', async ({ ack, payload, context }) => {
  */
 app.command('/statusList', async ({ ack, payload, context }) => {
   ackAndLogPayload(ack, payload);
-});
-
-/**
- * Send a status reminder
- * Internally used command
- */
-app.command('/statusSend', async ({ ack, payload, context }) => {
-  ackAndLogPayload(ack, payload);
+  // Fetch from Dynamo
+  // postMessage to ownerId
 });
 
 /**
@@ -46,6 +48,8 @@ app.command('/statusSend', async ({ ack, payload, context }) => {
  */
 app.command('/statusRespond', async ({ ack, payload, context }) => {
   ackAndLogPayload(ack, payload);
+  // Update status in Dynamo
+  // postMessage to ownerId
 });
 
 // Handle the Lambda function event

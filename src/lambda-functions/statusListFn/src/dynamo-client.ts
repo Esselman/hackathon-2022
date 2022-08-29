@@ -84,6 +84,27 @@ export class StatusDynamoClient {
       };
     });
   }
+
+  public async updateStatus(reminderId: string, newStatus: string): Promise<string> {
+    const params: DocumentClient.UpdateItemInput = {
+      TableName: this.statusTableName,
+      Key: {
+        reminderId
+      },
+      UpdateExpression: 'set status=:status',
+      ExpressionAttributeValues: {
+        ':status': newStatus
+      }
+    };
+
+    this.updateStatusItem(params);
+
+    return 'Status updated';
+  }
+
+  private async updateStatusItem(params: DocumentClient.UpdateItemInput): Promise<DocumentClient.UpdateItemOutput> {
+    return await this.documentClient.update(params).promise();
+  }
 }
 
 interface StatusRecord {

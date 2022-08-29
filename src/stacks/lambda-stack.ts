@@ -1,12 +1,16 @@
 import { Feature, Function, StageableStack, StageableStackProps } from '@ncino/aws-cdk';
 import { Code, Runtime } from '@aws-cdk/aws-lambda';
 
+interface LambdaStackProps extends StageableStackProps {
+  statusTableName: string;
+}
+
 export class LambdaStack extends StageableStack {
   private feature: Feature;
   private devMode: boolean;
   public statusListFn: Function;
 
-  constructor(feature: Feature, id: string, props: StageableStackProps) {
+  constructor(feature: Feature, id: string, props: LambdaStackProps) {
     super(feature, id, props);
     this.feature = feature;
     this.devMode = this.getContext('devMode', false);
@@ -17,7 +21,8 @@ export class LambdaStack extends StageableStack {
       {
         SLACK_BOT_TOKEN: process.env.SLACK_BOT_TOKEN ?? '',
         SLACK_APP_TOKEN: process.env.SLACK_APP_TOKEN ?? '',
-        SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET ?? ''
+        SLACK_SIGNING_SECRET: process.env.SLACK_SIGNING_SECRET ?? '',
+        statusTableName: props.statusTableName
       },
       this.devMode ? 128 : 512
     );

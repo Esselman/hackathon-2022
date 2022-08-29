@@ -40,7 +40,8 @@ const lambdaStack = new LambdaStack(feature, `${feature.getFullName('LambdaStack
     account: deployAccount,
     region: deployRegion
   },
-  stageName
+  stageName,
+  statusTableName: dataStack.statusTableName
 });
 feature.setStack('lambdaStack', lambdaStack);
 

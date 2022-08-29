@@ -29,9 +29,10 @@ export class LambdaStack extends StageableStack {
     environment?: { [key: string]: string },
     memorySize?: number
   ): Function {
-    const lambdaFunction = new Function(this, 'Status-List-Function', {
-      functionName: 'Status-List-Function',
-      runtime: Runtime.NODEJS_12_X,
+    const fullName: string = this.getFullName(name);
+    const lambdaFunction = new Function(this, fullName, {
+      functionName: fullName,
+      runtime: Runtime.NODEJS_14_X,
       handler: 'handler.main',
       code: Code.fromAsset(`src/lambda-functions/${assetName}/dist`),
       role: this.feature.baseStack.lambdaExecutionRole,

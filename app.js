@@ -5,7 +5,7 @@ const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   appToken: process.env.SLACK_APP_TOKEN,
   signingSecret: process.env.SLACK_SIGNING_SECRET,
-  socketMode: true,
+  // socketMode: true,
   port: process.env.PORT || 3000,
 });
 
@@ -25,7 +25,7 @@ app.command("/status-create", async ({ ack, payload, context }) => {
     const result = await app.client.views.open({
       trigger_id: payload.trigger_id,
       view: {
-        callback_id: 'status-create-view',
+        callback_id: "status-create-view",
         type: "modal",
         title: {
           type: "plain_text",
@@ -45,67 +45,55 @@ app.command("/status-create", async ({ ack, payload, context }) => {
             type: "section",
             text: {
               type: "plain_text",
-              text: "Hello, please fill out the information below",
+              text: "Hello, please fill out the information below.",
               emoji: true,
             },
           },
           {
             block_id: "conversations_select",
-
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: "Select a user or channel:",
-            },
-            accessory: {
+            optional: false,
+            type: "input",
+            element: {
               type: "conversations_select",
-              placeholder: {
-                type: "plain_text",
-                text: "Select a conversation",
-                emoji: true,
-              },
               action_id: "conversations_select-action",
+            },
+            label: {
+              type: "plain_text",
+              text: "Select a user or channel:",
+              emoji: true,
             },
           },
           {
             block_id: "datepicker",
-
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: "Pick a date:",
-            },
-            accessory: {
+            optional: false,
+            type: "input",
+            element: {
               type: "datepicker",
-              placeholder: {
-                type: "plain_text",
-                text: "Select a date",
-                emoji: true,
-              },
               action_id: "datepicker-action",
+            },
+            label: {
+              type: "plain_text",
+              text: "Select a date:",
+              emoji: true,
             },
           },
           {
             block_id: "timepicker",
-
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: "Select a time:",
-            },
-            accessory: {
+            optional: false,
+            type: "input",
+            element: {
               type: "timepicker",
-              placeholder: {
-                type: "plain_text",
-                text: "Select time",
-                emoji: true,
-              },
               action_id: "timepicker-action",
+            },
+            label: {
+              type: "plain_text",
+              text: "Select a time:",
+              emoji: true,
             },
           },
           {
             block_id: "plain_text_input",
-
+            optional: false,
             type: "input",
             element: {
               type: "plain_text_input",
@@ -127,61 +115,73 @@ app.command("/status-create", async ({ ack, payload, context }) => {
 });
 
 //called on modal submission
-app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
+app.view("status-create-view", async ({ ack, body, view, client, logger }) => {
   await ack();
 
-  console.log(view);
-  console.log(view.state.values);
-  const conversation = view.state.values.conversations_select['conversations_select-action'].selected_conversation;
-  const date = view.state.values.datepicker['datepicker-action'].selected_date;
-  const time = view.state.values.timepicker['timepicker-action'].selected_time;
-  const message = view.state.values.plain_text_input['plain_text_input-action'].value;
+  // console.log(view.state.values);
+  const recipient =
+    view.state.values.conversations_select["conversations_select-action"]
+      .selected_conversation;
+  const date = view.state.values.datepicker["datepicker-action"].selected_date;
+  const time = view.state.values.timepicker["timepicker-action"].selected_time;
+  const message =
+    view.state.values.plain_text_input["plain_text_input-action"].value;
 
-  //TODO store task
-  //TODO schedule reminder
-  
+  //need to convert date and time into unix time for chat.scheduleMessage
+  //also need to convert the user's entered time to UTC due to user time zones
+  const userInfo = await app.client.users.info({
+    token: app.token,
+    user: body.user.id,
+  });
+  const userTimeZoneOffsetInSeconds = -userInfo.user.tz_offset;
+
+  const epochTime =
+    Math.floor(Date.parse(date + " " + time) / 1000.0) +
+    userTimeZoneOffsetInSeconds;
+
+  //TODO store status
+  const reminder = {
+    ownerId: body.user.id,
+    recipientId: recipient,
+    time: epochTime,
+    message: message,
+  };
+
+  // console.log(reminder);
+
+  await remindUserAtTime(reminder);
 });
 
-
-// app.action("conversations_select-action", async ({ ack, body, context }) => {
-//   ack();
-
-//   await (function () {
-//     // body.actions.selected_conversation
-//   })();
-// });
-
 app.command("/testreminder", async ({ ack, payload, context }) => {
-  ack();
+  await ack();
 
-  console.log(payload);
+  // console.log(payload);
 
-  //example of what a reminder could look like
-  //if channelId exists, then the reminder was created for the channel and will be posted in the channel rather than a DM
-  await remindUser({
+  await remindUserAtTime({
     id: 1,
-    text: "Reminder",
-    date: "08/28/2022",
+    message: "Reminder",
+    //11 seconds from now
+    time: Math.floor(new Date().getTime() / 1000.0) + 11,
     /*
       User/Channel Ids
       Logan: U03V1P4617W
       Chris: U03V1N69NGL
       #bot_testing: C03UUS3U9P0
     */
-    creatorId: "U03V1P4617W",
-    channelId: undefined,
-    recipientId: "U03V1P4617W",
+    ownerId: payload.user_id,
+    recipientId: payload.user_id,
   });
 });
 
-async function remindUser(reminder) {
+async function remindUserAtTime(reminder) {
   try {
-    let channel = reminder.channelId ?? reminder.creatorId;
-    const ping =
-      reminder.channelId === channel ? "@here" : `<@${reminder.creatorId}>`;
-    await app.client.chat.postMessage({
+    const isChannel = reminder.recipientId[0] === "C";
+    const ping = isChannel ? "@here" : `<@${reminder.recipientId}>`;
+    await app.client.chat.scheduleMessage({
       token: app.token,
-      channel: channel,
+      channel: reminder.recipientId,
+      post_at: reminder.time,
+      text: `${reminder.message}`,
       blocks: [
         {
           type: "section",
@@ -194,7 +194,7 @@ async function remindUser(reminder) {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `${reminder.text}`,
+            text: `${reminder.message}`,
           },
         },
         {
@@ -255,15 +255,18 @@ app.action("statusInProgress", async ({ ack, body, context }) => {
 });
 
 async function notifyUser(userId, reminder, status) {
-  let reminderContext = `Reminder created by <@${reminder.creatorId}>`;
-  if (reminder.channelId) {
-    reminderContext += ` in <#${reminder.channelId}>`;
+  let reminderContext = `Reminder created by <@${reminder.ownerId}>`;
+  const forChannel = reminder.recipientId[0] === "C";
+
+  if (forChannel) {
+    reminderContext += ` for <#${reminder.channelId}>`;
   }
 
   try {
     await app.client.chat.postMessage({
       token: app.token,
       channel: userId,
+      text: reminder.message,
       blocks: [
         {
           type: "section",
@@ -276,7 +279,7 @@ async function notifyUser(userId, reminder, status) {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `${reminder.text}`,
+            text: `${reminder.message}`,
           },
         },
         {
@@ -318,7 +321,7 @@ async function notifyUser(userId, reminder, status) {
 //       type: "section",
 //       text: {
 //         type: "mrkdwn",
-//         text: reminder.text,
+//         text: reminder.message,
 //       },
 //     }));
 

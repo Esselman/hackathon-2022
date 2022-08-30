@@ -30,11 +30,9 @@ export class StatusDynamoClient {
       ownerTimeZoneOffset: input.ownerTimeZoneOffset,
       ownerUserName: input.ownerUserName,
       recipientId: input.recipientId,
-      recipientUserName: input.recipientUserName,
       reminderId: input.reminderId,
       scheduledTime: input.scheduledTime,
-      status: 'pending',
-      updateTime: undefined
+      state: 'pending'
     };
 
     return {
@@ -77,24 +75,23 @@ export class StatusDynamoClient {
         createTime: item.createTime,
         message: item.message,
         ownerUserName: item.ownerUserName,
-        recipientUserName: item.recipientUserName,
         scheduledTime: item.scheduledTime,
-        status: item.status,
+        state: item.state,
         updateTime: item.updateTime ?? ''
       };
     });
   }
 
-  public async updateStatus(reminderId: string, newStatus: string): Promise<string> {
+  public async updateStatus(ownerId: string, reminderId: string, newStatus: string): Promise<string> {
     const params: DocumentClient.UpdateItemInput = {
       TableName: this.statusTableName,
       Key: {
+        ownerId,
         reminderId
       },
-      UpdateExpression: 'set status=:status updateTime=:updateTime',
+      UpdateExpression: 'set state=:state',
       ExpressionAttributeValues: {
-        ':status': newStatus,
-        ':updateTime': new Date().getTime() / 1000
+        ':state': newStatus
       }
     };
 
@@ -114,7 +111,6 @@ export interface StatusInput {
   ownerTimeZoneOffset: number;
   ownerUserName: string;
   recipientId: string;
-  recipientUserName: string;
   reminderId: string;
   scheduledTime: number;
 }
@@ -126,19 +122,15 @@ interface StatusRecord {
   ownerTimeZoneOffset: number;
   ownerUserName: string;
   recipientId: string;
-  recipientUserName: string;
   reminderId: string;
   scheduledTime: number;
-  status: string;
-  updateTime?: number;
+  state: string;
 }
 
 export interface StatusResponse {
   createTime: number;
   message: string;
   ownerUserName: string;
-  recipientUserName: string;
   scheduledTime: number;
-  status: string;
-  updateTime?: number;
+  state: string;
 }

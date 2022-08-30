@@ -20,11 +20,11 @@ export class DataStack extends Stack {
     const statusTable: DynamoDb = new DynamoDb(this, tableName, {
       tableName,
       partitionKey: {
-        name: 'reminderId',
+        name: 'ownerId',
         type: AttributeType.STRING
       },
       sortKey: {
-        name: 'ownerId',
+        name: 'reminderId',
         type: AttributeType.STRING
       },
       removalPolicy: this.removalPolicy

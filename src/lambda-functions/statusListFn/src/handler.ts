@@ -4,6 +4,7 @@ import { App, AwsLambdaReceiver } from '@slack/bolt';
 import { StatusDynamoClient, StatusInput } from './dynamo-client';
 import { v4 as uuidv4 } from 'uuid';
 import { listMyStatuses } from './status-list';
+import { reminderMessageBlocks, statusButtonsBlock } from './messages';
 
 // Initialize your custom receiver
 console.log(process.env.SLACK_SIGNING_SECRET);
@@ -34,59 +35,12 @@ async function getDynamoClient(): Promise<StatusDynamoClient> {
 
 async function remindUserAtTime(reminder) {
   try {
-    const isChannel = reminder.recipientId[0] === 'C';
-    const ping = isChannel ? '@here' : `<@${reminder.recipientId}>`;
     await app.client.chat.scheduleMessage({
       token: app.token,
       channel: reminder.recipientId,
       post_at: reminder.time,
       text: `${reminder.message}`,
-      blocks: [
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `Hi, ${ping}! Here is your reminder:`
-          }
-        },
-        {
-          type: 'section',
-          text: {
-            type: 'mrkdwn',
-            text: `${reminder.message}`
-          }
-        },
-        {
-          type: 'actions',
-          elements: [
-            {
-              type: 'button',
-              text: {
-                type: 'plain_text',
-                text: 'Done'
-              },
-              style: 'primary',
-              value: `${JSON.stringify({
-                reminder,
-                status: 'Done'
-              })}`,
-              action_id: 'status-done'
-            },
-            {
-              type: 'button',
-              text: {
-                type: 'plain_text',
-                text: 'In progress'
-              },
-              value: `${JSON.stringify({
-                reminder,
-                status: 'In progress'
-              })}`,
-              action_id: 'status-in-progress'
-            }
-          ]
-        }
-      ]
+      blocks: [...reminderMessageBlocks(reminder), statusButtonsBlock(reminder)]
     });
   } catch (error) {
     console.error(error);
@@ -135,6 +89,23 @@ async function notifyUser(userId, reminder, status) {
   } catch (error) {
     console.error(error);
   }
+}
+
+async function handleStatusUpdate({ ack, body, context }): Promise<void> {
+  const parsedValue = JSON.parse(body.actions[0].value);
+  const reminder = parsedValue.reminder;
+  const status = parsedValue.status;
+  const dynamoClient: StatusDynamoClient = await getDynamoClient();
+
+  dynamoClient.updateStatus(reminder.ownerId, reminder.reminderId, status);
+  await notifyUser(reminder.recipientId, reminder, status);
+
+  await app.client.chat.update({
+    token: app.token,
+    channel: reminder.recipientId,
+    ts: body.message.ts,
+    blocks: reminderMessageBlocks(reminder)
+  });
 }
 
 /**
@@ -265,7 +236,6 @@ app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
     ownerTimeZoneOffset: userTimeZoneOffsetInSeconds,
     ownerUserName: body.user.username,
     recipientId: recipient,
-    recipientUserName: 'WHO KNOWS?????',
     reminderId,
     scheduledTime: epochTime
   };
@@ -289,51 +259,16 @@ app.action('status-done', async ({ ack, body, context }) => {
 
   console.log('status-done');
   console.log(body);
-  const parsedValue = JSON.parse(body.actions[0].value);
-  const reminder = parsedValue.reminder;
-  const status = parsedValue.status;
-  const dynamoClient: StatusDynamoClient = await getDynamoClient();
 
-  dynamoClient.updateStatus(reminder.reminderId, 'done');
-  await notifyUser(reminder.recipientId, reminder, status);
-
-  //TODO combine duplicate functionality
-  const isChannel = reminder.recipientId[0] === 'C';
-  const ping = isChannel ? '@here' : `<@${reminder.recipientId}>`;
-  await app.client.chat.update({
-    token: app.token,
-    channel: reminder.recipientId,
-    ts: body.message.ts,
-    blocks: [
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `Hi, ${ping}! Here is your reminder:`
-        }
-      },
-      {
-        type: 'section',
-        text: {
-          type: 'mrkdwn',
-          text: `${reminder.message}`
-        }
-      }
-    ]
-  });
+  await handleStatusUpdate({ ack, body, context });
 });
 
 app.action('status-in-progress', async ({ ack, body, context }) => {
   await ackAndLogPayload(ack, body);
 
   console.log('status-in-progress');
-  const parsedValue = JSON.parse(body.actions[0].value);
-  const reminder = parsedValue.reminder;
-  const status = parsedValue.status;
-  const dynamoClient: StatusDynamoClient = await getDynamoClient();
 
-  dynamoClient.updateStatus(reminder.reminderId, 'in progress');
-  await notifyUser(reminder.recipientId, reminder, status);
+  await handleStatusUpdate({ ack, body, context });
 });
 
 /**
@@ -342,7 +277,10 @@ app.action('status-in-progress', async ({ ack, body, context }) => {
  */
 app.command('/statuslist', async ({ ack, payload, context }) => {
   await ackAndLogPayload(ack, payload);
-  await listMyStatuses();
+  const featureRoleCredentials = await getFeatureRoleCredentials();
+
+  const statuses = await listMyStatuses(featureRoleCredentials, payload.user_id);
+  console.log(statuses);
   // Fetch from Dynamo
   // postMessage to ownerId
 });

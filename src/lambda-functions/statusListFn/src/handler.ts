@@ -1,5 +1,6 @@
 import { RoleCredentials, STSManager } from '@ncino/aws-sdk';
 import { App, AwsLambdaReceiver } from '@slack/bolt';
+import { StatusDynamoClient, StatusInput } from './dynamo-client';
 
 // Initialize your custom receiver
 console.log(process.env.SLACK_SIGNING_SECRET);
@@ -226,8 +227,6 @@ app.command('/statuscreate', async ({ ack, payload, context }) => {
   } catch (error) {
     console.error(error);
   }
-  // Store in Dynamo
-  // postMessage with post_at
 });
 
 app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
@@ -250,7 +249,20 @@ app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
 
   const epochTime = Math.floor(Date.parse(date + ' ' + time) / 1000.0) + userTimeZoneOffsetInSeconds;
 
-  //TODO store status
+  const featureRoleCredentials = await getFeatureRoleCredentials();
+  const dynamoClient: StatusDynamoClient = new StatusDynamoClient(featureRoleCredentials);
+  const statusInput: StatusInput = {
+    message,
+    ownerId: body.user.id,
+    ownerTimeZoneOffset: userTimeZoneOffsetInSeconds,
+    ownerUserName: body.user.username,
+    recipientId: recipient,
+    recipientUserName: 'WHO KNOWS?????',
+    reminderId: view.trigger_id,
+    scheduledTime: epochTime
+  };
+  console.log(`Storing status.. ${await dynamoClient.storeStatus(statusInput)}`);
+
   const reminder = {
     ownerId: body.user.id,
     recipientId: recipient,

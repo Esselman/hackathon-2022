@@ -84,6 +84,50 @@ async function remindUserAtTime(reminder) {
   }
 }
 
+async function notifyUser(userId, reminder, status) {
+  let reminderContext = `Reminder created by <@${reminder.ownerId}>`;
+  const forChannel = reminder.recipientId[0] === 'C';
+
+  if (forChannel) {
+    reminderContext += ` for <#${reminder.channelId}>`;
+  }
+
+  try {
+    await app.client.chat.postMessage({
+      token: app.token,
+      channel: userId,
+      text: reminder.message,
+      blocks: [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `Hi, <@${userId}>! This is a notification that the following reminder is now *${status}*:`
+          }
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `${reminder.message}`
+          }
+        },
+        {
+          type: 'context',
+          elements: [
+            {
+              type: 'mrkdwn',
+              text: reminderContext
+            }
+          ]
+        }
+      ]
+    });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 /**
  * Create a new status reminder
  * Externally used command
@@ -219,6 +263,26 @@ app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
   await remindUserAtTime(reminder);
 });
 
+app.action('statusDone', async ({ ack, body, context }) => {
+  ack();
+
+  // console.log(body);
+  const parsedValue = JSON.parse(body.actions[0].value);
+  const reminder = parsedValue.reminder;
+  const status = parsedValue.status;
+  await notifyUser(reminder.recipientId, reminder, status);
+});
+
+app.action('statusInProgress', async ({ ack, body, context }) => {
+  ack();
+
+  // console.log(body);
+  const parsedValue = JSON.parse(body.actions[0].value);
+  const reminder = parsedValue.reminder;
+  const status = parsedValue.status;
+  await notifyUser(reminder.recipientId, reminder, status);
+});
+
 /**
  * List current statuses
  * Externally used command
@@ -242,10 +306,6 @@ app.command('/statusRespond', async ({ ack, payload, context }) => {
 // Handle the Lambda function event
 module.exports.main = async (event, context, callback) => {
   console.log(event);
-  // const params = new URLSearchParams(event.body);
-  // const parsedParams = Object.fromEntries(params);
-  // event.body = JSON.stringify(parsedParams);
-  // console.log(event);
   const handler = await awsLambdaReceiver.start();
   return handler(event, context, callback);
 };

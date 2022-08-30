@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/camelcase */
 import { RoleCredentials, STSManager } from '@ncino/aws-sdk';
 import { App, AwsLambdaReceiver } from '@slack/bolt';
 import { StatusDynamoClient, StatusInput } from './dynamo-client';
+import { v4 as uuidv4 } from 'uuid';
 
 // Initialize your custom receiver
 console.log(process.env.SLACK_SIGNING_SECRET);
@@ -22,6 +24,11 @@ async function ackAndLogPayload(ack, payload): Promise<void> {
 async function getFeatureRoleCredentials(): Promise<RoleCredentials> {
   const featureRoleArn: string = process.env.featureRoleArn ?? '';
   return await STSManager.assumeRole(featureRoleArn);
+}
+
+async function getDynamoClient(): Promise<StatusDynamoClient> {
+  const featureRoleCredentials = await getFeatureRoleCredentials();
+  return new StatusDynamoClient(featureRoleCredentials);
 }
 
 async function remindUserAtTime(reminder) {
@@ -103,7 +110,7 @@ async function notifyUser(userId, reminder, status) {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `Hi, <@${reminder.ownerId}>! This is a notification that the following reminder for ${userId} is now *${status}*:`
+            text: `Hi, <@${reminder.ownerId}>! This is a notification that the following reminder for <@${userId}> is now *${status}*:`
           }
         },
         {
@@ -238,6 +245,7 @@ app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
   const date = view.state.values.datepicker['datepicker-action'].selected_date;
   const time = view.state.values.timepicker['timepicker-action'].selected_time;
   const message = view.state.values.plain_text_input['plain_text_input-action'].value;
+  const reminderId = uuidv4();
 
   //need to convert date and time into unix time for chat.scheduleMessage
   //also need to convert the user's entered time to UTC due to user time zones
@@ -249,8 +257,7 @@ app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
 
   const epochTime = Math.floor(Date.parse(date + ' ' + time) / 1000.0) + userTimeZoneOffsetInSeconds;
 
-  const featureRoleCredentials = await getFeatureRoleCredentials();
-  const dynamoClient: StatusDynamoClient = new StatusDynamoClient(featureRoleCredentials);
+  const dynamoClient: StatusDynamoClient = await getDynamoClient();
   const statusInput: StatusInput = {
     message,
     ownerId: body.user.id,
@@ -258,7 +265,7 @@ app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
     ownerUserName: body.user.username,
     recipientId: recipient,
     recipientUserName: 'WHO KNOWS?????',
-    reminderId: view.trigger_id,
+    reminderId,
     scheduledTime: epochTime
   };
   console.log(`Storing status.. ${await dynamoClient.storeStatus(statusInput)}`);
@@ -267,7 +274,8 @@ app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
     ownerId: body.user.id,
     recipientId: recipient,
     time: epochTime,
-    message
+    message,
+    reminderId
   };
 
   // console.log(reminder);
@@ -279,10 +287,39 @@ app.action('status-done', async ({ ack, body, context }) => {
   await ackAndLogPayload(ack, body);
 
   console.log('status-done');
+  console.log(body);
   const parsedValue = JSON.parse(body.actions[0].value);
   const reminder = parsedValue.reminder;
   const status = parsedValue.status;
+  const dynamoClient: StatusDynamoClient = await getDynamoClient();
+
+  dynamoClient.updateStatus(reminder.reminderId, 'done');
   await notifyUser(reminder.recipientId, reminder, status);
+
+  //TODO combine duplicate functionality
+  const isChannel = reminder.recipientId[0] === 'C';
+  const ping = isChannel ? '@here' : `<@${reminder.recipientId}>`;
+  await app.client.chat.update({
+    token: app.token,
+    channel: reminder.recipientId,
+    ts: body.message.ts,
+    blocks: [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `Hi, ${ping}! Here is your reminder:`
+        }
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `${reminder.message}`
+        }
+      }
+    ]
+  });
 });
 
 app.action('status-in-progress', async ({ ack, body, context }) => {
@@ -292,6 +329,9 @@ app.action('status-in-progress', async ({ ack, body, context }) => {
   const parsedValue = JSON.parse(body.actions[0].value);
   const reminder = parsedValue.reminder;
   const status = parsedValue.status;
+  const dynamoClient: StatusDynamoClient = await getDynamoClient();
+
+  dynamoClient.updateStatus(reminder.reminderId, 'in progress');
   await notifyUser(reminder.recipientId, reminder, status);
 });
 
@@ -301,17 +341,8 @@ app.action('status-in-progress', async ({ ack, body, context }) => {
  */
 app.command('/statuslist', async ({ ack, payload, context }) => {
   await ackAndLogPayload(ack, payload);
+  // await listMyStatuses();
   // Fetch from Dynamo
-  // postMessage to ownerId
-});
-
-/**
- * Send a response to a reminder to the reminder owner
- * Internally used command
- */
-app.command('/statusRespond', async ({ ack, payload, context }) => {
-  await ackAndLogPayload(ack, payload);
-  // Update status in Dynamo
   // postMessage to ownerId
 });
 
@@ -320,4 +351,8 @@ module.exports.main = async (event, context, callback) => {
   console.log(event);
   const handler = await awsLambdaReceiver.start();
   return handler(event, context, callback);
+};
+
+module.exports.AckAndLogPayload = async function (ack: any, payload: any): Promise<void> {
+  await ackAndLogPayload(ack, payload);
 };

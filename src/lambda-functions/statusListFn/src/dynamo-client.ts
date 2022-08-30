@@ -33,7 +33,7 @@ export class StatusDynamoClient {
       recipientUserName: input.recipientUserName,
       reminderId: input.reminderId,
       scheduledTime: input.scheduledTime,
-      status: 'In Progress',
+      status: 'pending',
       updateTime: undefined
     };
 
@@ -133,7 +133,7 @@ interface StatusRecord {
   updateTime?: number;
 }
 
-interface StatusResponse {
+export interface StatusResponse {
   createTime: number;
   message: string;
   ownerUserName: string;

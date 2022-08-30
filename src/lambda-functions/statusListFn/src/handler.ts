@@ -73,7 +73,7 @@ async function remindUserAtTime(reminder) {
                 reminder,
                 status: 'In progress'
               })}`,
-              action_id: 'status-inprogress'
+              action_id: 'status-in-progress'
             }
           ]
         }
@@ -102,7 +102,7 @@ async function notifyUser(userId, reminder, status) {
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: `Hi, <@${userId}>! This is a notification that the following reminder is now *${status}*:`
+            text: `Hi, <@${reminder.ownerId}>! This is a notification that the following reminder for ${userId} is now *${status}*:`
           }
         },
         {
@@ -264,7 +264,7 @@ app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
 });
 
 app.action('status-done', async ({ ack, body, context }) => {
-  ack();
+  await ackAndLogPayload(ack, body);
 
   console.log('status-done');
   const parsedValue = JSON.parse(body.actions[0].value);
@@ -274,7 +274,7 @@ app.action('status-done', async ({ ack, body, context }) => {
 });
 
 app.action('status-in-progress', async ({ ack, body, context }) => {
-  ack();
+  await ackAndLogPayload(ack, body);
 
   console.log('status-in-progress');
   const parsedValue = JSON.parse(body.actions[0].value);

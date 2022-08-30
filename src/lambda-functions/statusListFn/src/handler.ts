@@ -3,6 +3,7 @@ import { RoleCredentials, STSManager } from '@ncino/aws-sdk';
 import { App, AwsLambdaReceiver } from '@slack/bolt';
 import { StatusDynamoClient, StatusInput } from './dynamo-client';
 import { v4 as uuidv4 } from 'uuid';
+import { listMyStatuses } from './status-list';
 
 // Initialize your custom receiver
 console.log(process.env.SLACK_SIGNING_SECRET);
@@ -341,7 +342,7 @@ app.action('status-in-progress', async ({ ack, body, context }) => {
  */
 app.command('/statuslist', async ({ ack, payload, context }) => {
   await ackAndLogPayload(ack, payload);
-  // await listMyStatuses();
+  await listMyStatuses();
   // Fetch from Dynamo
   // postMessage to ownerId
 });

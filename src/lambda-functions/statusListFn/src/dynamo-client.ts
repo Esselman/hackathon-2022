@@ -15,7 +15,7 @@ export class StatusDynamoClient {
     });
   }
 
-  public async storeStatus(statusInput): Promise<string> {
+  public async storeStatus(statusInput: StatusInput): Promise<string> {
     const params: DocumentClient.PutItemInput = this.buildStoreStatusesParams(statusInput);
     await this.storeStatuses(params);
 
@@ -24,7 +24,7 @@ export class StatusDynamoClient {
 
   private buildStoreStatusesParams(input): DocumentClient.PutItemInput {
     const record: StatusRecord = {
-      createTime: new Date().toUTCString(),
+      createTime: new Date().getTime() / 1000,
       message: input.message,
       ownerId: input.ownerId,
       ownerTimeZoneOffset: input.ownerTimeZoneOffset,
@@ -32,7 +32,7 @@ export class StatusDynamoClient {
       recipientId: input.recipientId,
       recipientUserName: input.recipientUserName,
       reminderId: input.reminderId,
-      scheduledTime: input.scheduledTime.toUTCString(),
+      scheduledTime: input.scheduledTime,
       status: 'In Progress',
       updateTime: undefined
     };
@@ -91,9 +91,10 @@ export class StatusDynamoClient {
       Key: {
         reminderId
       },
-      UpdateExpression: 'set status=:status',
+      UpdateExpression: 'set status=:status updateTime=:updateTime',
       ExpressionAttributeValues: {
-        ':status': newStatus
+        ':status': newStatus,
+        ':updateTime': new Date().getTime() / 1000
       }
     };
 
@@ -107,8 +108,7 @@ export class StatusDynamoClient {
   }
 }
 
-interface StatusRecord {
-  createTime: string;
+export interface StatusInput {
   message: string;
   ownerId: string;
   ownerTimeZoneOffset: number;
@@ -116,17 +116,29 @@ interface StatusRecord {
   recipientId: string;
   recipientUserName: string;
   reminderId: string;
-  scheduledTime: string;
+  scheduledTime: number;
+}
+
+interface StatusRecord {
+  createTime: number;
+  message: string;
+  ownerId: string;
+  ownerTimeZoneOffset: number;
+  ownerUserName: string;
+  recipientId: string;
+  recipientUserName: string;
+  reminderId: string;
+  scheduledTime: number;
   status: string;
-  updateTime?: string;
+  updateTime?: number;
 }
 
 interface StatusResponse {
-  createTime: string;
+  createTime: number;
   message: string;
   ownerUserName: string;
   recipientUserName: string;
-  scheduledTime: string;
+  scheduledTime: number;
   status: string;
-  updateTime?: string;
+  updateTime?: number;
 }

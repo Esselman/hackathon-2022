@@ -23,6 +23,6 @@ module.exports = {
     'prettier/prettier': 'error',
     'object-shorthand': ['error', 'properties'],
     'unused-imports/no-unused-imports-ts': 2,
-    camelcase: 'off'
+    '@typescript-eslint/camelcase': 'off'
   }
 };

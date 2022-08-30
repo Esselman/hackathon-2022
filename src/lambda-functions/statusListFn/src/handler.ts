@@ -13,8 +13,8 @@ const app: any = new App({
   receiver: awsLambdaReceiver
 });
 
-function ackAndLogPayload(ack, payload): void {
-  ack();
+async function ackAndLogPayload(ack, payload): Promise<void> {
+  await ack();
   console.log(payload);
 }
 
@@ -61,7 +61,7 @@ async function remindUserAtTime(reminder) {
                 reminder,
                 status: 'Done'
               })}`,
-              action_id: 'statusDone'
+              action_id: 'status-done'
             },
             {
               type: 'button',
@@ -73,7 +73,7 @@ async function remindUserAtTime(reminder) {
                 reminder,
                 status: 'In progress'
               })}`,
-              action_id: 'statusInProgress'
+              action_id: 'status-inprogress'
             }
           ]
         }
@@ -95,7 +95,7 @@ async function notifyUser(userId, reminder, status) {
   try {
     await app.client.chat.postMessage({
       token: app.token,
-      channel: userId,
+      channel: reminder.ownerId,
       text: reminder.message,
       blocks: [
         {
@@ -134,7 +134,7 @@ async function notifyUser(userId, reminder, status) {
  */
 app.command('/statuscreate', async ({ ack, payload, context }) => {
   console.log('/statuscreate');
-  ackAndLogPayload(ack, payload);
+  await ackAndLogPayload(ack, payload);
   try {
     const result = await app.client.views.open({
       trigger_id: payload.trigger_id,
@@ -263,20 +263,20 @@ app.view('status-create-view', async ({ ack, body, view, client, logger }) => {
   await remindUserAtTime(reminder);
 });
 
-app.action('statusDone', async ({ ack, body, context }) => {
+app.action('status-done', async ({ ack, body, context }) => {
   ack();
 
-  // console.log(body);
+  console.log('status-done');
   const parsedValue = JSON.parse(body.actions[0].value);
   const reminder = parsedValue.reminder;
   const status = parsedValue.status;
   await notifyUser(reminder.recipientId, reminder, status);
 });
 
-app.action('statusInProgress', async ({ ack, body, context }) => {
+app.action('status-in-progress', async ({ ack, body, context }) => {
   ack();
 
-  // console.log(body);
+  console.log('status-in-progress');
   const parsedValue = JSON.parse(body.actions[0].value);
   const reminder = parsedValue.reminder;
   const status = parsedValue.status;
@@ -288,7 +288,7 @@ app.action('statusInProgress', async ({ ack, body, context }) => {
  * Externally used command
  */
 app.command('/statuslist', async ({ ack, payload, context }) => {
-  ackAndLogPayload(ack, payload);
+  await ackAndLogPayload(ack, payload);
   // Fetch from Dynamo
   // postMessage to ownerId
 });
@@ -298,7 +298,7 @@ app.command('/statuslist', async ({ ack, payload, context }) => {
  * Internally used command
  */
 app.command('/statusRespond', async ({ ack, payload, context }) => {
-  ackAndLogPayload(ack, payload);
+  await ackAndLogPayload(ack, payload);
   // Update status in Dynamo
   // postMessage to ownerId
 });
